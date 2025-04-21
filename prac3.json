@@ -1,0 +1,441 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "CoreServicesVnet": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            },
+            "defaultValue" : "CoreServicesVnet"
+        },
+
+        "ManufacturingVnet": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            },
+            "defaultValue": "ManufacturingVnet"
+        },
+        "SharedServicesSubnet": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            },
+            "defaultValue": "SharedServiceSubnet"
+        },
+        "DatabaseSubnet": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            },
+            "defaultValue": "DatabaseSubnet"
+        },
+        "SensorSubnet1": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            },
+            "defaultValue": "SensorSubnet1"
+        },
+        "SensorSubnet2": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            },
+            "defaultValue": "SensorSubnet2"
+        },
+        "myNSGSecure": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "asg-web": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "AllowASG": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "DenyAnyCustom8080Outbound": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "DNS_zone_contoso.com": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            },
+            "defaultValue": "contoso.com"
+        },
+        "Private_DNS_Zone": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            },
+            "defaultValue": "private.contoso.com"
+        }
+    },
+    "functions": [],
+    "variables": {
+        "Vnet1NetworkAddress": "10.20.0.0/16",
+        "Vnet1Subnet1AddressPrefix": "10.20.10.0/24",
+        "Vnet1Subnet2AddressPrefix": "10.20.20.0/24",
+        "Vnet2NetworkAddress": "0.30.0.0/16",
+        "Vnet2Subnet1AddressPrefix": "10.30.20.0/24",
+        "Vnet2Subnet2AddressPrefix": "10.30.21.0/24",
+        "Region": "East US"
+    },
+    "resources": [
+        {
+            "name": "[parameters('CoreServicesVnet')]",
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2024-03-01",
+            "location": "[variables('Region')]",
+            "tags": {
+                "displayName": "[parameters('CoreServicesVnet')]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('CoreServicesVnet'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups',parameters('myNSGSecure'))]"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('Vnet1NetworkAddress')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[concat(parameters('CoreServicesVnet'), '/' ,parameters('SharedServicesSubnet'))]",
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('CoreServicesVnet'), parameters('SharedServicesSubnet'))]",
+                        "properties": {
+                            "addressPrefix": "[variables('Vnet1Subnet1AddressPrefix')]",
+                            "networkSecurityGroup": {
+                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups',parameters('myNSGSecure'))]"
+                            
+                            }
+                        },
+                        "type": "Microsoft.Network/virtualNetworks/subnets"
+                    },
+                    {
+                        "name": "[concat(parameters('CoreServicesVnet'), '/' ,parameters('DatabaseSubnet'))]",
+                        "properties": {
+                            "addressPrefix": "[variables('Vnet1Subnet2AddressPrefix')]",
+                            "networkSecurityGroup": {
+                            
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "[parameters('ManufacturingVnet')]",
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2024-03-01",
+            "location": "[variables('Region')]",
+            "tags": {
+                "displayName": "[parameters('ManufacturingVnet')]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('ManufacturingVnet'))]"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('Vnet2NetworkAddress')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[concat(parameters('ManufacturingVnet'), '/' ,parameters('SensorSubnet1'))]",
+                        "properties": {
+                            "addressPrefix": "[variables('Vnet2Subnet1AddressPrefix')]",
+                            "networkSecurityGroup": {
+                            
+                            }
+                        }
+                    },
+                    {
+                        "name": "[concat(parameters('ManufacturingVnet'), '/' ,parameters('SensorSubnet2'))]",
+                        "properties": {
+                            "addressPrefix": "[variables('Vnet2Subnet2AddressPrefix')]",
+                            "networkSecurityGroup": {
+                            
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "[concat(parameters('CoreServicesVnet'), '/' ,parameters('SharedServicesSubnet'))]",
+            "type": "Microsoft.Network/virtualNetworks/subnets",
+            "apiVersion": "2024-03-01",
+            "location": "[resourceGroup().location]",
+            "tags": {
+                "displayName": "[parameters('SharedServicesSubnet')]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('CoreServicesVnet'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('myNSGSecure'))]"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('Vnet1Subnet1AddressPrefix')]"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "[concat(parameters('CoreServicesVnet'), '/' ,parameters('DatabaseSubnet'))]",
+            "type": "Microsoft.Network/virtualNetworks/subnets",
+            "apiVersion": "2024-03-01",
+            "location": "[resourceGroup().location]",
+            "tags": {
+                "displayName": "[parameters('DatabaseSubnet')]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('CoreServicesVnet'))]"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('Vnet1Subnet2AddressPrefix')]"
+                    ]
+                }
+                
+            }
+        },
+        {
+            "name": "[parameters('SensorSubnet1')]",
+            "type": "Microsoft.Network/virtualNetworks/subnets",
+            "apiVersion": "2024-03-01",
+            "location": "[resourceGroup().location]",
+            "tags": {
+                "displayName": "[parameters('SensorSubnet1')]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('ManufacturingVnet'))]"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('Vnet2Subnet1AddressPrefix')]"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "[parameters('SensorSubnet2')]",
+            "type": "Microsoft.Network/virtualNetworks/subnets",
+            "apiVersion": "2024-03-01",
+            "location": "[resourceGroup().location]",
+            "tags": {
+                "displayName": "[parameters('SensorSubnet2')]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('ManufacturingVnet'))]"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('Vnet2Subnet2AddressPrefix')]"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "[parameters('myNSGSecure')]",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2024-03-01",
+            "location": "[variables('Region')]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "nsgRule1",
+                        "properties": {
+                            "description": "description",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "*",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 100,
+                            "direction": "Inbound"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "[parameters('asg-web')]",
+            "type": "Microsoft.Network/applicationSecurityGroups",
+            "apiVersion": "2024-03-01",
+            "location": "[resourceGroup().location]",
+            "tags": {},
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('myNSGSecure'))]"
+            ],
+            "properties": {}
+        },
+        {
+            "name": "[parameters('AllowASG')]",
+            "type": "Microsoft.Network/networkSecurityGroups/securityrules",
+            "apiVersion": "2024-03-01",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups' , parameters('myNSGSecure'))]",
+                "[resourceId('Microsoft.Network/ApplicationSecurityGroup', parameters('asg-web'))]"
+            ],
+            "properties": {
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "80,443",
+                "sourceAddressPrefix": "*",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 100,
+                "direction": "Inbound",
+                "sourceApplicationSecurityGroups":[
+                    {
+                        "id": "[resourceId('Microsoft.Network/ApplicationSecurityGroup', parameters('asg-web'))]"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "[parameters('DenyAnyCustom8080Outbound')]",
+            "type": "Microsoft.Network/networkSecurityGroups/securityrules",
+            "apiVersion": "2024-03-01",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('myNSGSecure'))]"
+            ],
+            "properties": {
+                "protocol": "*",
+                "sourcePortRange": "*",
+                "destinationPortRange": "8080",
+                "sourceAddressPrefix": "*",
+                "destinationAddressPrefix": "*",
+                "access": "Deny",
+                "priority": 4096,
+                "direction": "Outbound"
+            }
+        },
+        {
+            "name": "[parameters('DNS_zone_contoso.com')]",
+            "type": "Microsoft.Network/dnsZones",
+            "apiVersion": "2018-05-01",
+            "location": "[variables('Region')]",
+            "properties": {}
+        },
+        {
+            "name": "[concat(parameters('DNS_zone_contoso.com'), '/www')]",
+            "type": "Microsoft.Network/dnsZones/A",
+            "apiVersion": "2018-05-01",
+            "location": "global",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/dnsZones',parameters('DNS_zone_contoso.com'))]"
+            ],
+            "properties": {
+                "TTL": 1,
+                "Arecords": [
+                    {
+                        "ipv4Address": "10.1.1.4"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "[parameters('Private_DNS_Zone')]",
+            "type": "Microsoft.Network/privatednsZones",
+            "apiVersion": "2018-05-01",
+            "location": "[variables('Region')]",
+            "properties": {}
+        },
+        {
+            "name": "[concat(parameters('Private_DNS_Zone'), '/manufacturing-link')]",
+            "type": "Microsoft.Network/dnsZones/VirtualNetworkLinks",
+            "apiVersion": "2018-05-01",
+            "location": "global",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privatednsZones', parameters('Private_DNS_Zone'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('ManufacturingVnet'))]"
+            ],
+            "properties": {
+                "TTL": 3600,
+                "Arecords": []
+            }
+        },
+        {
+            "name": "[concat(parameters('Private_DNS_Zone'), '/sensorvm')]",
+            "type": "Microsoft.Network/privatednsZones/A",
+            "apiVersion": "2018-05-01",
+            "location": "global",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privatednsZones', parameters('Private_DNS_Zone'))]"
+            ],
+            "properties": {
+                "TTL": 1,
+                "Arecords": [
+                    {
+                        "ipv4Address": "10.1.1.4"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "virtualNetwork1",
+            "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+            "apiVersion": "2024-03-01",
+            "location": "[resourceGroup().location]",
+            "tags": {
+                "displayName": "virtualNetwork1"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks',parameters('CoreServicesVnet'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('ManufacturingVnet'))]"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "10.0.0.0/16"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "Subnet-1",
+                        "properties": {
+                            "addressPrefix": "10.0.0.0/24",
+                            "networkSecurityGroup": {
+                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+                            }
+                        }
+                    },
+                    {
+                        "name": "Subnet-2",
+                        "properties": {
+                            "addressPrefix": "10.0.1.0/24",
+                            "networkSecurityGroup": {
+                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "outputs": {}
+}
